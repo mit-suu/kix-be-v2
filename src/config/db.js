@@ -2,6 +2,17 @@
 const mongoose = require('mongoose');
 
 const mongoURI = process.env.MONGO_URI;
+let retryTimer = null;
+
+function scheduleReconnect() {
+  if (retryTimer) return;
+
+  retryTimer = setTimeout(async () => {
+    retryTimer = null;
+    if (mongoose.connection.readyState === 1 || mongoose.connection.readyState === 2) return;
+    await connectDB();
+  }, 10000);
+}
 
 const connectDB = async () => {
   if (!mongoURI) {
@@ -17,6 +28,7 @@ const connectDB = async () => {
     return true;
   } catch (err) {
     console.error(`Error connecting to MongoDB: ${err.message}`);
+    scheduleReconnect();
     return false;
   }
 };
@@ -33,6 +45,7 @@ const logConnection = () => {
 
   mongoose.connection.on('disconnected', () => {
     console.log('MongoDB connection disconnected');
+    scheduleReconnect();
   });
 };
 

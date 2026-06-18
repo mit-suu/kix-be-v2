@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
+const mongoose = require('mongoose');
 const route = require('./routes');
 const logger = require('./middlewares/logger');
 const setupSwagger = require('./config/swagger');
@@ -40,8 +41,39 @@ app.use(express.json());
 app.use(cookieParser());
 logger(app);
 
+app.get('/', (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: 'KIX API is running',
+    dbState: mongoose.connection.readyState,
+  });
+});
+
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    success: true,
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
+    db: {
+      state: mongoose.connection.readyState,
+      name: mongoose.connection.name || null,
+      host: mongoose.connection.host || null,
+    },
+  });
+});
+
 // ── SWAGGER ───────────────────────────────────────────────────────────────────
 setupSwagger(app);
+
+app.use('/api', (req, res, next) => {
+  if (mongoose.connection.readyState === 1) return next();
+
+  return res.status(503).json({
+    success: false,
+    message: 'Database is not connected',
+    dbState: mongoose.connection.readyState,
+  });
+});
 
 // ── ROUTES ────────────────────────────────────────────────────────────────────
 route(app);

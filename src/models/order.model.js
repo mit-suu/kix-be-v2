@@ -108,10 +108,7 @@ const orderSchema = new mongoose.Schema(
 
     payment_order_id: {
       type: String,
-      default: null,
-      index: true,
-      unique: true,
-      sparse: true,
+      default: undefined,
     },
 
     payment_reference_code: {
@@ -148,6 +145,14 @@ const orderSchema = new mongoose.Schema(
   },
   {
     timestamps: true,
+  }
+);
+
+orderSchema.index(
+  { payment_order_id: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { payment_order_id: { $type: "string" } },
   }
 );
 

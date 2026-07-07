@@ -12,7 +12,8 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "seed": "node sheet.js"
+    "seed": "node sheet.js",
+    "fix:payment-index": "node scripts/fix-order-payment-index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",

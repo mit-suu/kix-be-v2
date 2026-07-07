@@ -8,6 +8,7 @@ const SKU = require("../models/sku.model");
 const Store = require("../models/store.model");
 const User = require("../models/user.model");
 const promotionService = require("./promotion.service");
+const paymentServiceClient = require("./payment-service.client");
 
 /**
  * Tạo mã đơn hàng unique
@@ -299,6 +300,7 @@ async function updatePaymentStatus(orderId, paymentStatus) {
 
     if (paymentStatus === 'success') {
         order.status = 'paid';
+        order.paid_at = order.paid_at || new Date();
     }
 
     if (paymentStatus === 'failed' && order.status === 'pending') {
@@ -308,6 +310,89 @@ async function updatePaymentStatus(orderId, paymentStatus) {
 
     await order.save();
     return order;
+}
+
+function getPublicAppUrl(req) {
+    const configuredUrl = process.env.APP_PUBLIC_URL || process.env.API_PUBLIC_URL;
+    if (configuredUrl) return configuredUrl.replace(/\/+$/, "");
+
+    const protocol = req.headers["x-forwarded-proto"] || req.protocol || "http";
+    const host = req.headers["x-forwarded-host"] || req.get("host");
+    return `${protocol}://${host}`;
+}
+
+async function createPaymentServiceOrder(userId, orderData, req) {
+    const order = await createOrder(userId, {
+        ...orderData,
+        payment_method: "payment_service",
+    });
+
+    try {
+        const paymentData = await paymentServiceClient.createPaymentOrder({
+            amount: order.total,
+            description: `KIX Order ${order.order_number}`,
+            callbackUrl: `${getPublicAppUrl(req)}/api/v1/orders/payment-callback`,
+        });
+
+        order.payment_order_id = paymentData.order_id;
+        order.payment_reference_code = paymentData.reference_code;
+        order.payment_description = paymentData.payment_description;
+        order.payment_qr_code_url = paymentData.qr_code_url;
+        await order.save();
+
+        return order;
+    } catch (error) {
+        order.payment_status = "failed";
+        order.status = "cancelled";
+        await restoreInventory(order);
+        await order.save();
+        throw error;
+    }
+}
+
+async function markPaymentServiceOrderPaid(paymentOrderId, clientId) {
+    if (clientId !== paymentServiceClient.getExpectedClientId()) {
+        const error = new Error("Invalid client_id");
+        error.status = 403;
+        throw error;
+    }
+
+    const order = await Order.findOne({ payment_order_id: paymentOrderId });
+    if (!order) {
+        const error = new Error("Order not found");
+        error.status = 404;
+        throw error;
+    }
+
+    if (order.status === "paid" && order.payment_status === "success") {
+        return order;
+    }
+
+    order.payment_status = "success";
+    order.status = "paid";
+    order.paid_at = order.paid_at || new Date();
+    await order.save();
+    return order;
+}
+
+async function syncPaymentServiceStatus(orderId, userId = null) {
+    const order = await getOrderById(orderId, userId);
+    if (!order) throw new Error("Order not found");
+    if (!order.payment_order_id) throw new Error("Payment order not found");
+
+    const paymentOrder = await paymentServiceClient.getPaymentOrder(order.payment_order_id);
+
+    if (paymentOrder.status === "paid") {
+        order.payment_status = "success";
+        order.status = "paid";
+        order.paid_at = order.paid_at || new Date(paymentOrder.paid_at || Date.now());
+        await order.save();
+    }
+
+    return {
+        order,
+        payment: paymentOrder,
+    };
 }
 
 /**
@@ -347,6 +432,9 @@ module.exports = {
     getOrderById,
     updateOrderStatus,
     updatePaymentStatus,
+    createPaymentServiceOrder,
+    markPaymentServiceOrderPaid,
+    syncPaymentServiceStatus,
     cancelOrder,
     getAllOrders,
 };

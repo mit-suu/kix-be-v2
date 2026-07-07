@@ -8,7 +8,7 @@ const inventoryRouter = require("./inventory.routes");
 const stockTicketRouter = require("./stock-ticket.routes");
 const colorRouter = require("./color.routes");
 const promotionRouter = require("./promotion.routes");
-const { vnpayReturn } = require("../controllers/order.controller");
+const { vnpayReturn, paymentServiceCallback } = require("../controllers/order.controller");
 
 function route(app) {
   app.use("/api/v1/auth", authRouter);
@@ -19,6 +19,7 @@ function route(app) {
 
   // Public VNPay return URL — đăng ký trước orderRouter để bypass authenticate middleware
   app.get("/api/v1/orders/vnpay/return", vnpayReturn);
+  app.post("/api/v1/orders/payment-callback", paymentServiceCallback);
 
   app.use("/api/v1/orders", orderRouter);
   app.use("/api/v1/inventory", inventoryRouter);

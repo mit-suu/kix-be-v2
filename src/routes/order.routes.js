@@ -8,6 +8,8 @@ const {
     cancelOrder,
     getAllOrders,
     createVnpayPayment,
+    createPaymentServicePayment,
+    getPaymentServiceStatus,
 } = require("../controllers/order.controller");
 
 const router = express.Router();
@@ -22,6 +24,7 @@ router.get("/admin/all", authorize("admin", "store_manager"), getAllOrders);
 // ===== VNPay =====
 // POST   /api/v1/orders/vnpay/create-url  - Tạo đơn hàng + URL thanh toán VNPay
 router.post("/vnpay/create-url", createVnpayPayment);
+router.post("/payment-service/create-order", createPaymentServicePayment);
 
 // ===== Customer routes =====
 // POST   /api/v1/orders/checkout    - Đặt hàng từ giỏ hàng
@@ -29,6 +32,7 @@ router.post("/checkout", checkout);
 
 // GET    /api/v1/orders             - Lấy danh sách đơn hàng của mình
 router.get("/", getMyOrders);
+router.get("/:id/payment-status", getPaymentServiceStatus);
 
 // GET    /api/v1/orders/:id         - Lấy chi tiết đơn hàng
 router.get("/:id", getOrderDetail);

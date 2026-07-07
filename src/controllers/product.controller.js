@@ -191,11 +191,32 @@ async function createProduct(req, res) {
         );
     } catch (error) {
         console.error("CREATE PRODUCT ERROR:", error);
+
+        if (error.name === "ValidationError") {
+            return res.status(400).json(
+                baseDTO({
+                    success: false,
+                    message: "Validation failed",
+                    error: Object.values(error.errors).map((err) => err.message),
+                })
+            );
+        }
+
+        if (error.code === 11000) {
+            return res.status(409).json(
+                baseDTO({
+                    success: false,
+                    message: "Product already exists",
+                    error: error.keyValue,
+                })
+            );
+        }
+
         return res.status(500).json(
             baseDTO({
                 success: false,
                 message: "Server error",
-                error: process.env.NODE_ENV === "development" ? error.message : undefined,
+                error: error.message,
             })
         );
     }
@@ -238,11 +259,21 @@ async function updateProduct(req, res) {
             );
         }
 
+        if (error.name === "ValidationError") {
+            return res.status(400).json(
+                baseDTO({
+                    success: false,
+                    message: "Validation failed",
+                    error: Object.values(error.errors).map((err) => err.message),
+                })
+            );
+        }
+
         return res.status(500).json(
             baseDTO({
                 success: false,
                 message: "Server error",
-                error: process.env.NODE_ENV === "development" ? error.message : undefined,
+                error: error.message,
             })
         );
     }

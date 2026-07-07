@@ -11,7 +11,10 @@ const app = express();
 // ── CORS ──────────────────────────────────────────────────────────────────────
 const allowedOrigins = [
   process.env.CLIENT_URL || 'http://localhost:3000', // Web
+  'http://localhost:3000',  // Vite dev server
+  'http://127.0.0.1:3000',  // Vite dev server
   'http://localhost:3001',  // Vite dev server (fallback port)
+  'http://127.0.0.1:3001',  // Vite dev server (fallback port)
   'http://localhost:8081',  // Expo app
   'http://localhost:19006', // Expo web
   'https://kix-fe.vercel.app',

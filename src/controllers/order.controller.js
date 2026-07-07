@@ -335,6 +335,123 @@ async function createVnpayPayment(req, res) {
  * GET /api/v1/orders/vnpay/return  (public — VNPay redirects here after payment)
  * Xác thực kết quả VNPay và redirect về frontend
  */
+async function createPaymentServicePayment(req, res) {
+    try {
+        const { isValid, errors, data } = createOrderDTO(req.body);
+
+        if (!isValid) {
+            return res.status(400).json(
+                baseDTO({ success: false, message: "Validation failed", error: errors })
+            );
+        }
+
+        const order = await orderService.createPaymentServiceOrder(
+            req.user.userId,
+            {
+                ...data,
+                promo_code: req.body.promo_code || null,
+            },
+            req
+        );
+
+        return res.status(201).json(
+            baseDTO({
+                success: true,
+                message: "Payment QR created",
+                data: {
+                    order: orderResponseDTO(order),
+                    orderId: order._id,
+                    orderNumber: order.order_number,
+                    payment_order_id: order.payment_order_id,
+                    payment_status: order.payment_status,
+                    payment_description: order.payment_description,
+                    payment_reference_code: order.payment_reference_code,
+                    qr_code_url: order.payment_qr_code_url,
+                },
+            })
+        );
+    } catch (error) {
+        console.error("CREATE PAYMENT SERVICE ORDER ERROR:", error);
+
+        if (
+            error.message.includes("empty") ||
+            error.message.includes("not found") ||
+            error.message.includes("not available") ||
+            error.message.includes("Insufficient") ||
+            error.message.includes("Promo") ||
+            error.message.includes("promo") ||
+            error.message.includes("Payment service")
+        ) {
+            return res.status(error.status || 400).json(
+                baseDTO({ success: false, message: error.message, error: error.data })
+            );
+        }
+
+        return res.status(500).json(
+            baseDTO({ success: false, message: "Server error" })
+        );
+    }
+}
+
+async function paymentServiceCallback(req, res) {
+    try {
+        const { order_id, status, client_id } = req.body;
+
+        if (!order_id || !status || !client_id) {
+            return res.status(400).json(
+                baseDTO({ success: false, message: "Missing fields" })
+            );
+        }
+
+        if (status === "paid") {
+            await orderService.markPaymentServiceOrderPaid(order_id, client_id);
+        }
+
+        return res.status(200).json({ success: true });
+    } catch (error) {
+        console.error("PAYMENT SERVICE CALLBACK ERROR:", error);
+        return res.status(error.status || 500).json(
+            baseDTO({ success: false, message: error.message || "Server error" })
+        );
+    }
+}
+
+async function getPaymentServiceStatus(req, res) {
+    try {
+        const result = await orderService.syncPaymentServiceStatus(
+            req.params.id,
+            req.user.role === "customer" ? req.user.userId : null
+        );
+
+        return res.status(200).json(
+            baseDTO({
+                success: true,
+                message: "Payment status retrieved successfully",
+                data: {
+                    order: orderResponseDTO(result.order),
+                    payment: result.payment,
+                },
+            })
+        );
+    } catch (error) {
+        console.error("GET PAYMENT SERVICE STATUS ERROR:", error);
+
+        if (error.message.includes("not found")) {
+            return res.status(404).json(
+                baseDTO({ success: false, message: error.message })
+            );
+        }
+
+        return res.status(error.status || 500).json(
+            baseDTO({
+                success: false,
+                message: error.message || "Server error",
+                error: error.data,
+            })
+        );
+    }
+}
+
 async function vnpayReturn(req, res) {
     const query = req.query;
     const clientUrl = process.env.CLIENT_URL || "http://localhost:3000";
@@ -377,5 +494,8 @@ module.exports = {
     cancelOrder,
     getAllOrders,
     createVnpayPayment,
+    createPaymentServicePayment,
+    paymentServiceCallback,
+    getPaymentServiceStatus,
     vnpayReturn,
 };

@@ -21,6 +21,25 @@ const {
 
 const router = express.Router();
 
+function handleProductImageUpload(req, res, next) {
+    uploadProductImages(req, res, (error) => {
+        if (!error) return next();
+
+        console.error("PRODUCT IMAGE UPLOAD ERROR:", error);
+
+        const status = error.code === "LIMIT_FILE_SIZE" || error.message?.includes("Invalid image file")
+            ? 400
+            : 500;
+
+        return res.status(status).json({
+            success: false,
+            message: error.code === "LIMIT_FILE_SIZE"
+                ? "Image file is too large. Maximum size is 5MB."
+                : error.message || "Failed to upload product images",
+        });
+    });
+}
+
 // ===== Public routes =====
 // GET    /api/v1/products           - Lấy danh sách sản phẩm
 router.get("/", getProducts);
@@ -57,10 +76,10 @@ router.delete("/:id/reviews/:reviewId", authenticate, deleteReview);
 
 // ===== Admin routes =====
 // POST   /api/v1/products           - Tạo sản phẩm mới (upload ảnh qua Cloudinary)
-router.post("/", authenticate, authorize("admin"), uploadProductImages, createProduct);
+router.post("/", authenticate, authorize("admin"), handleProductImageUpload, createProduct);
 
 // PUT    /api/v1/products/:id       - Cập nhật sản phẩm (upload ảnh qua Cloudinary)
-router.put("/:id", authenticate, authorize("admin"), uploadProductImages, updateProduct);
+router.put("/:id", authenticate, authorize("admin"), handleProductImageUpload, updateProduct);
 
 // DELETE /api/v1/products/:id       - Xóa sản phẩm (soft delete)
 router.delete("/:id", authenticate, authorize("admin"), deleteProduct);

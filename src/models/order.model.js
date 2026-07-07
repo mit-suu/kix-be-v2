@@ -106,6 +106,34 @@ const orderSchema = new mongoose.Schema(
       default: "vnpay",
     },
 
+    payment_order_id: {
+      type: String,
+      default: null,
+      index: true,
+      unique: true,
+      sparse: true,
+    },
+
+    payment_reference_code: {
+      type: String,
+      default: null,
+    },
+
+    payment_description: {
+      type: String,
+      default: null,
+    },
+
+    payment_qr_code_url: {
+      type: String,
+      default: null,
+    },
+
+    paid_at: {
+      type: Date,
+      default: null,
+    },
+
     payment_status: {
       type: String,
       enum: ["pending", "success", "failed"],

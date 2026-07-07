@@ -46,6 +46,11 @@ function orderResponseDTO(order) {
     promotion_id: order.promotion_id || null,
     payment_method: order.payment_method,
     payment_status: order.payment_status,
+    payment_order_id: order.payment_order_id || null,
+    payment_reference_code: order.payment_reference_code || null,
+    payment_description: order.payment_description || null,
+    payment_qr_code_url: order.payment_qr_code_url || null,
+    paid_at: order.paid_at || null,
     status: order.status,
     createdAt: order.createdAt,
   };

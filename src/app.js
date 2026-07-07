@@ -33,7 +33,7 @@ const corsOptions = {
   },
   credentials: true, // Cho phép gửi cookie (refresh token httpOnly)
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'Pragma'],
 };
 
 app.options('{*any}', cors(corsOptions)); // Xử lý preflight request
